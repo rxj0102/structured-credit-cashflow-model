@@ -1,5 +1,7 @@
 # structured-credit-cashflow-model
 
+[![CI](https://github.com/rxj0102/structured-credit-cashflow-model/actions/workflows/ci.yml/badge.svg)](https://github.com/rxj0102/structured-credit-cashflow-model/actions/workflows/ci.yml)
+
 A synthetic, end-to-end model of the workflow used by a **structured credit /
 significant risk transfer (SRT) investment analyst** to underwrite a bank
 commercial loan portfolio — from reference-pool construction through

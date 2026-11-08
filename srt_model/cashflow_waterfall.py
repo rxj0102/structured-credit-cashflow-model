@@ -214,12 +214,13 @@ def run_waterfall(
 
     for _, period in pool_cashflows.iterrows():
         interest_available = period["interest_collected"] - period["servicing_fee"]
-        principal_available = period["total_principal_collected"]
         net_loss = max(period["net_loss"], 0.0)
-        # Recoveries in excess of that period's gross defaults act as
-        # additional principal proceeds available to distribute.
-        excess_recoveries = max(-period["net_loss"], 0.0)
-        principal_available_total = principal_available + excess_recoveries
+        # All recovery cash is principal proceeds. The write-down is already
+        # net of same-period recoveries (net_loss), so paying the recovery
+        # cash out as principal keeps tranche balances and cash consistent:
+        # balance reduction = sched + prepay + defaults. Recoveries beyond the
+        # period's defaults pay down balances written down earlier.
+        principal_available_total = period["total_principal_collected"] + period["recoveries_received"]
 
         # --- Loss allocation: reverse-seniority (junior-most first) ---
         remaining_loss = net_loss

@@ -103,3 +103,19 @@ def test_run_waterfall_accepts_unordered_tranche_list():
         assert results_shuffled["tranches"][name]["cumulative_loss_absorbed"] == pytest.approx(
             results_ordered["tranches"][name]["cumulative_loss_absorbed"]
         )
+
+
+def test_waterfall_distributes_all_cash_and_repays_all_balances():
+    a = PoolAssumptions(
+        beginning_balance=1e9, wac=0.07, wam_months=60,
+        annual_cdr=0.05, lgd=0.4, annual_cpr=0.1,
+    )
+    cf = build_pool_cashflows(a)
+    res = run_waterfall(cf, 1e9)
+    paid = sum(
+        t["cashflows"][["interest_paid", "principal_paid"]].sum().sum()
+        for t in res["tranches"].values()
+    )
+    assert paid == pytest.approx(cf["total_cash_available"].sum(), rel=1e-9)
+    for t in res["tranches"].values():
+        assert t["ending_balance"] == pytest.approx(0.0, abs=1.0)

@@ -4,15 +4,15 @@
 
 A synthetic, end-to-end model of the workflow used by a **structured credit /
 significant risk transfer (SRT) investment analyst** to underwrite a bank
-commercial loan portfolio — from reference-pool construction through
+commercial loan portfolio: from reference-pool construction through
 historical loss analysis, cash flow waterfall modeling, Monte Carlo risk
 simulation, scenario sensitivity, fund-level economics, and a draft
 Investment Committee (IC) memo.
 
 > ## ⚠️ Synthetic Data Disclaimer
 >
-> **Every number in this repository — every loan, obligor, industry sector,
-> rating, default, recovery, and cash flow — is randomly generated.** There
+> **Every number in this repository: every loan, obligor, industry sector,
+> rating, default, recovery, and cash flow: is randomly generated.** There
 > is no real bank, no real portfolio, and no real transaction behind any of
 > it. The methodology (vintage curve analysis, Gaussian copula Monte Carlo,
 > tranche waterfalls, fund fee mechanics) mirrors techniques used in real
@@ -52,30 +52,30 @@ output/                        # CSV/Markdown artifacts written by each module's
 ```
 
 Each numbered module can be run standalone (`python -m srt_model.<module>`)
-and also imported as a library by downstream modules — `ic_memo_draft.py`
+and also imported as a library by downstream modules: `ic_memo_draft.py`
 imports and calls every other module directly, so every figure in the memo
 is computed live rather than hard-coded.
 
 ## Methodology summary
 
-1. **`loan_portfolio.py`** — Generates 2,000–5,000 synthetic commercial
+1. **`loan_portfolio.py`**: Generates 2,000–5,000 synthetic commercial
    loans (default 3,000), one per obligor, with industry sector, balance,
    coupon, origination/maturity, rating (an 8-notch internal scale mapped to
    a 1-year PD), LGD (driven by collateral type/seniority), and
    amortization type. Computes weighted-average coupon, sector
    concentration, rating distribution, and single-name concentration.
 
-2. **`historical_loss_analysis.py`** — Builds a synthetic 8-vintage
+2. **`historical_loss_analysis.py`**: Builds a synthetic 8-vintage
    (annual-origination) static-pool performance panel with a Weibull-shaped
    default-timing curve and vintage-level credit-cycle variation. Younger
-   vintages are right-censored at the "as of" date, exactly as real
+   vintages are right-censored at the *as of* date, exactly as real
    performance data would be. A dollar-weighted vintage development curve
    is fit from the more seasoned vintages and used to extrapolate each
    vintage's *ultimate* cumulative default rate (a chain-ladder-style
    development-factor approach), then balance-weighted into base-case CDR
    and LGD assumptions.
 
-3. **`cashflow_waterfall.py`** — Projects aggregate pool cash flows
+3. **`cashflow_waterfall.py`**: Projects aggregate pool cash flows
    (interest, scheduled principal, defaults, recoveries net of a recovery
    lag, prepayments) using standard ABS/CLO cash flow mechanics, then
    allocates them through a 3-tranche structure (Senior / Mezzanine /
@@ -83,7 +83,7 @@ is computed live rather than hard-coded.
    reverse-seniority loss allocation. Reports each tranche's realized yield
    (via IRR), interest/principal received, and cumulative loss absorbed.
 
-4. **`monte_carlo_risk.py`** — Simulates 5,000–10,000 correlated default
+4. **`monte_carlo_risk.py`**: Simulates 5,000–10,000 correlated default
    paths with a single-factor Gaussian copula (a shared systemic factor
    plus obligor-level idiosyncratic risk, calibrated so each loan's
    marginal default probability matches its origination PD) and stochastic
@@ -92,21 +92,21 @@ is computed live rather than hard-coded.
    percentile loss (VaR), and expected shortfall (CVaR), with particular
    focus on the mezzanine and first-loss tranches.
 
-5. **`scenario_sensitivity.py`** — Runs Base / Stress / Severe Stress
+5. **`scenario_sensitivity.py`**: Runs Base / Stress / Severe Stress
    scenarios that jointly move default rate (up to 3.5x), LGD (up to
    1.45x), and prepayment speed (down to 0.3x, reflecting slower voluntary
    refinancing in a downturn), and reports the resulting tranche-level
    yield impact versus base case.
 
-6. **`fund_rollup.py`** — Rolls the mezzanine tranche's cash flows up into
+6. **`fund_rollup.py`**: Rolls the mezzanine tranche's cash flows up into
    a fund-level model: a cash-sweep financing facility (leverage), an
    annualized bps FX-hedging cost drag for a non-USD LP share class, and a
-   European (whole-fund) fee waterfall — management fee, return of
+   European (whole-fund) fee waterfall: management fee, return of
    capital, compounding preferred return/hurdle, 100% GP catch-up, and a
-   residual carry split — producing net LP IRR and MOIC under each
+   residual carry split: producing net LP IRR and MOIC under each
    scenario.
 
-7. **`ic_memo_draft.py`** — Runs the full pipeline end-to-end and formats
+7. **`ic_memo_draft.py`**: Runs the full pipeline end-to-end and formats
    the results into a structured Markdown IC memo (transaction overview,
    collateral summary, historical loss analysis, structure/tranching,
    Monte Carlo risk summary, scenario sensitivity, fund economics, and a
@@ -118,7 +118,7 @@ is computed live rather than hard-coded.
 The Monte Carlo module (bottom-up, obligor-rating-implied PDs) and the
 historical vintage curve (top-down, realized default experience) are two
 independent lenses on the same portfolio's credit risk, calibrated to be
-broadly consistent with each other but not identical — exactly the kind of
+broadly consistent with each other but not identical: exactly the kind of
 reconciliation a real analyst would need to do between an origination-time
 view and a realized-performance view. Don't expect the two to match
 exactly; the memo surfaces both.
@@ -172,3 +172,29 @@ fee waterfall ordering, IRR/MOIC edge cases).
 
 See the module docstrings in `srt_model/` for the full methodology and
 assumptions behind each step.
+
+## Reproducibility
+
+### Data availability
+
+No external data is downloaded. Inputs are generated or parameterised inside the code.
+
+### Computational requirements
+
+- Python 3.12.3. Every dependency version is pinned in `uv.lock`.
+- Checked on Linux x86_64 with 2 CPU cores and 8 GB RAM. No GPU is needed.
+
+```bash
+pip install uv     # once
+uv sync            # installs the exact pinned environment
+uv run pytest -q   # runs the test suite
+```
+
+### Runtime
+
+The test suite (55 tests) finishes in about 12 seconds on the machine above, including any data downloads it triggers.
+
+### Citation
+
+Citation metadata is in `CITATION.cff`. GitHub turns it into a Cite this repository button on the repo page.
+

@@ -119,3 +119,20 @@ def test_waterfall_distributes_all_cash_and_repays_all_balances():
     assert paid == pytest.approx(cf["total_cash_available"].sum(), rel=1e-9)
     for t in res["tranches"].values():
         assert t["ending_balance"] == pytest.approx(0.0, abs=1.0)
+
+
+def test_principal_plus_losses_equal_pool_balance():
+    """Over the deal, principal paid plus losses written down must equal the original
+    pool balance, and total losses must equal defaults minus recoveries."""
+    import pytest
+
+    from srt_model.cashflow_waterfall import PoolAssumptions, build_pool_cashflows, run_waterfall
+
+    for cdr in (0.0, 0.03, 0.10, 0.25):
+        a = PoolAssumptions(beginning_balance=1e9, wac=0.07, wam_months=60, annual_cdr=cdr, lgd=0.45)
+        pc = build_pool_cashflows(a)
+        tr = run_waterfall(pc, 1e9)["tranches"]
+        paid = sum(v["total_principal_received"] for v in tr.values())
+        lost = sum(v["cumulative_loss_absorbed"] for v in tr.values())
+        assert paid + lost == pytest.approx(1e9, rel=1e-9)
+        assert lost == pytest.approx(pc["defaulted_balance"].sum() - pc["recoveries_received"].sum(), rel=1e-9, abs=1e-3)

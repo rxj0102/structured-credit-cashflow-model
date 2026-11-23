@@ -23,15 +23,17 @@ Methodology / simplifying assumptions
 * Defaulted balances are removed from the performing pool at the month of
   default; recoveries (= defaulted balance * (1 - LGD)) are collected
   after a fixed ``recovery_lag_months``.
-* Net period loss = gross defaults in the period - recoveries collected
-  in the period. Losses are allocated to tranches in reverse seniority
-  (first-loss/equity absorbs first) as permanent write-downs of tranche
-  balance -- i.e. no subsequent write-up from later recoveries. This is a
-  simplifying (conservative-for-mezz-and-senior) assumption common to a
-  first-pass model.
-* Principal collections (scheduled amortization + prepayments) are paid
-  sequentially, senior tranche first, consistent with a typical SRT note
-  structure where the senior piece amortizes fastest.
+* Losses are written down at default by their severity, defaulted balance
+  times LGD (column ``loss_severity``), in reverse seniority (first-loss
+  absorbs first). The recovery part of a default is not a loss: it stays in
+  the tranche balances until the recovery cash arrives and pays it down.
+  So over the deal, principal paid plus losses written down equals the
+  original pool balance, as scheduled principal + prepayments + defaults
+  must. ``net_loss`` (defaults minus recoveries received in the period) is
+  kept for reporting only.
+* Principal collections (scheduled amortization + prepayments) and
+  recoveries are paid sequentially, senior tranche first, consistent with a
+  typical SRT note structure where the senior piece amortizes fastest.
 * Each tranche earns its own coupon on its beginning balance; interest is
   paid sequentially by seniority, with any residual after paying all
   tranche coupons flowing to the first-loss/equity tranche as excess
@@ -118,6 +120,7 @@ def build_pool_cashflows(assumptions: PoolAssumptions) -> pd.DataFrame:
 
         ending_balance = max(beginning_balance - scheduled_principal - defaulted_balance - prepayment, 0.0)
         net_loss = defaulted_balance - recoveries_received
+        loss_severity = defaulted_balance * a.lgd
         total_principal_collected = scheduled_principal + prepayment
         total_cash_available = interest_collected - servicing_fee + total_principal_collected + recoveries_received
 
@@ -132,6 +135,7 @@ def build_pool_cashflows(assumptions: PoolAssumptions) -> pd.DataFrame:
                 "recoveries_received": recoveries_received,
                 "prepayment": prepayment,
                 "net_loss": net_loss,
+                "loss_severity": loss_severity,
                 "ending_balance": ending_balance,
                 "total_principal_collected": total_principal_collected,
                 "total_cash_available": total_cash_available,
@@ -155,6 +159,7 @@ def build_pool_cashflows(assumptions: PoolAssumptions) -> pd.DataFrame:
                     "recoveries_received": amount,
                     "prepayment": 0.0,
                     "net_loss": -amount,
+                    "loss_severity": 0.0,
                     "ending_balance": 0.0,
                     "total_principal_collected": 0.0,
                     "total_cash_available": amount,
@@ -214,12 +219,15 @@ def run_waterfall(
 
     for _, period in pool_cashflows.iterrows():
         interest_available = period["interest_collected"] - period["servicing_fee"]
-        net_loss = max(period["net_loss"], 0.0)
-        # All recovery cash is principal proceeds. The write-down is already
-        # net of same-period recoveries (net_loss), so paying the recovery
-        # cash out as principal keeps tranche balances and cash consistent:
-        # balance reduction = sched + prepay + defaults. Recoveries beyond the
-        # period's defaults pay down balances written down earlier.
+        # Write down the severity (defaulted balance x LGD) at default. The
+        # recovery part stays in the balances and is paid down by recovery cash
+        # when it arrives, so balance reduction = sched + prepay + defaults.
+        # (Netting same-period recoveries against defaults AND paying them as
+        # principal, as an earlier version did, counted recoveries twice.)
+        if "loss_severity" in period.index:
+            net_loss = max(period["loss_severity"], 0.0)
+        else:
+            raise ValueError("pool_cashflows needs a loss_severity column (defaulted balance x LGD)")
         principal_available_total = period["total_principal_collected"] + period["recoveries_received"]
 
         # --- Loss allocation: reverse-seniority (junior-most first) ---

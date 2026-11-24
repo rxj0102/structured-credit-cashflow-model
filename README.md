@@ -47,7 +47,7 @@ srt_model/
 ├── ic_memo_draft.py           # 7. Orchestrates 1-6 into a structured IC memo (Markdown)
 └── finance_utils.py           # Shared IRR/NPV/amortization helpers
 
-tests/                         # pytest suite (54 tests)
+tests/                         # pytest suite (56 tests)
 output/                        # CSV/Markdown artifacts written by each module's `main()`
 ```
 
@@ -150,7 +150,7 @@ python -m srt_model.ic_memo_draft
 python -m pytest -v
 ```
 
-The suite (54 tests) covers portfolio generation and summary statistics,
+The suite (56 tests) covers portfolio generation and summary statistics,
 vintage curve construction, waterfall allocation logic (loss sequencing,
 notional conservation, interest/principal pay order), Monte Carlo
 reproducibility/convergence and tail-risk metric ordering, scenario math
@@ -192,7 +192,7 @@ uv run pytest -q   # runs the test suite
 
 ### Runtime
 
-The test suite (55 tests) finishes in about 12 seconds on the machine above, including any data downloads it triggers.
+The test suite (56 tests) finishes in about 12 seconds on the machine above, including any data downloads it triggers.
 
 ### Citation
 
